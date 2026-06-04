@@ -103,7 +103,7 @@ public class AuctionClient {
     private static void showUserMenu() {
         System.out.println("\nMENU UŻYTKOWNIKA (" + loggedInUser + ")");
         System.out.println("1. Przeglądaj aukcje");
-        System.out.println("2. Szczegóły aukcji (lista licytujących)");
+        System.out.println("2. Szczegóły aukcji");
         System.out.println("3. Licytuj");
         System.out.println("4. Moje licytacje");
         System.out.println("5. Wyloguj");
@@ -140,7 +140,7 @@ public class AuctionClient {
     private static void showAdminMenu() {
         System.out.println("\nMENU ADMINISTRATORA (" + loggedInUser + ")");
         System.out.println("1. Przeglądaj aukcje");
-        System.out.println("2. Szczegóły aukcji (lista licytujących)");
+        System.out.println("2. Szczegóły aukcji");
         System.out.println("3. Dodaj aukcję");
         System.out.println("4. Moje licytacje");
         System.out.println("5. Wyloguj");
