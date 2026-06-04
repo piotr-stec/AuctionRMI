@@ -131,7 +131,7 @@ public class AuctionClient {
                     System.out.println("Nieprawidłowy wybór.");
             }
         } catch (NumberFormatException e) {
-            System.out.println("Błąd: Wprowadzono nieprawidłowe dane liczbowe.");
+            System.out.println("Błąd: Wprowadzono nieprawidłowe dane.");
         } catch (Exception e) {
             System.out.println("Błąd: " + e.getMessage());
         }
@@ -168,7 +168,7 @@ public class AuctionClient {
                     System.out.println("Nieprawidłowy wybór.");
             }
         } catch (NumberFormatException e) {
-            System.out.println("Błąd: Wprowadzono nieprawidłowe dane liczbowe.");
+            System.out.println("Błąd: Wprowadzono nieprawidłowe dane.");
         } catch (Exception e) {
             System.out.println("Błąd: " + e.getMessage());
         }
@@ -247,9 +247,9 @@ public class AuctionClient {
                 if (item.isActive()) {
                     System.out.println("   Status: Aktywna (do " + item.getEndTime().format(DATE_FORMATTER) + ")");
                     if (amIWinning) {
-                        System.out.printf("   Sytuacja: Prowadzisz z kwotą %.2f\n", myBid);
+                        System.out.printf("   Prowadzisz z kwotą %.2f\n", myBid);
                     } else {
-                        System.out.printf("   Sytuacja: Przebito! Twoja oferta: %.2f, Aktualna cena: %.2f\n", myBid, item.getCurrentPrice());
+                        System.out.printf("   Przebito! Twoja oferta: %.2f, Aktualna cena: %.2f\n", myBid, item.getCurrentPrice());
                     }
                 } else {
                     System.out.println("   Status: Zakończona");
