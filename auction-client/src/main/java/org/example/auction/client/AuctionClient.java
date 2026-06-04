@@ -1,74 +1,234 @@
 package org.example.auction.client;
 
-import java.io.IOException;
-import java.rmi.Naming;
-
 import org.example.auction.common.AuctionItem;
 import org.example.auction.common.AuctionRemoteInterface;
 import org.example.auction.common.User;
 
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.util.List;
+import java.util.Scanner;
+
 public class AuctionClient {
-    public static void main(String[] args) throws Exception {
-        AuctionRemoteInterface service = (AuctionRemoteInterface) Naming.lookup("rmi://localhost:1099/AuctionService");
+    private static AuctionRemoteInterface server;
+    private static final Scanner scanner = new Scanner(System.in);
 
-        User user = new User("janAdmin", "haslo123", "jan@wp.pl", true);
-        boolean result = service.registerUser(user);
-        if (result) {
-            System.out.println("Użytkownik zarejestrowany: " + user.getLogin());
-        } else {
-            System.out.println("Nie można zarejestrować użytkownika (login zajęty): " + user.getLogin());
-        }
+    private static String loggedInUser = null;
+    private static boolean isAdmin = false;
 
-        AuctionItem item = new AuctionItem(0, "Laptop", "Nowy laptop gamingowy", 3000.0, 2);
+    public static void main(String[] args) {
         try {
-            AuctionItem addedItem = service.addAuctionItem(user.getLogin(), item);
-            if (addedItem == null) {
-                System.out.println("Nie dodano aukcji (brak uprawnien lub blad serwera).");
-                return;
-            }
-            System.out.println("Dodano aukcje: " + addedItem.getTitle());
+            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+            server = (AuctionRemoteInterface) registry.lookup("AuctionService");
 
-        } catch (IOException e) {
-            System.err.println("Błąd podczas dodawania aukcji: " + e.getMessage());
-            e.printStackTrace();
+            boolean running = true;
+            while (running) {
+                if (loggedInUser == null) {
+                    running = showGuestMenu();
+                } else if (isAdmin) {
+                    showAdminMenu();
+                } else {
+                    showUserMenu();
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Błąd połączenia z serwerem: " + e.getMessage());
+        }
+    }
+
+    private static boolean showGuestMenu() {
+        System.out.println("\nMENU GŁÓWNE");
+        System.out.println("1. Zaloguj się");
+        System.out.println("2. Zarejestruj się");
+        System.out.println("3. Wyjdź");
+        System.out.print("Wybór: ");
+
+        String choice = scanner.nextLine();
+        try {
+            switch (choice) {
+                case "1":
+                    handleLogin();
+                    break;
+                case "2":
+                    handleRegister();
+                    break;
+                case "3":
+                    return false;
+                default:
+                    System.out.println("Nieprawidłowy wybór.");
+            }
+        } catch (Exception e) {
+            System.out.println("Błąd: " + e.getMessage());
+        }
+        return true;
+    }
+
+    private static void handleLogin() throws Exception {
+        System.out.print("Login: ");
+        String login = scanner.nextLine();
+        System.out.print("Hasło: ");
+        String password = scanner.nextLine();
+
+        if (server.login(login, password)) {
+            loggedInUser = login;
+            isAdmin = server.isUserAdmin(login);
+            System.out.println("Zalogowano użytkownika: " + login);
+        } else {
+            System.out.println("Nieprawidłowe dane logowania.");
+        }
+    }
+
+    private static void handleRegister() throws Exception {
+        System.out.print("Login: ");
+        String login = scanner.nextLine();
+        System.out.print("Hasło: ");
+        String password = scanner.nextLine();
+        System.out.print("Email: ");
+        String email = scanner.nextLine();
+        System.out.print("Konto administratora? (T/N): ");
+        boolean isUserAdmin = scanner.nextLine().trim().equalsIgnoreCase("T");
+
+        User newUser = new User(login, password, email, isUserAdmin);
+
+        if (server.registerUser(newUser)) {
+            System.out.println("Rejestracja zakończona. Można się zalogować.");
+        } else {
+            System.out.println("Błąd: Login jest już zajęty.");
+        }
+    }
+
+    private static void showUserMenu() {
+        System.out.println("\nMENU UŻYTKOWNIKA (" + loggedInUser + ")");
+        System.out.println("1. Przeglądaj aukcje");
+        System.out.println("2. Licytuj");
+        System.out.println("3. Sprawdź zwycięzcę");
+        System.out.println("4. Wyloguj");
+        System.out.print("Wybór: ");
+
+        String choice = scanner.nextLine();
+        try {
+            switch (choice) {
+                case "1":
+                    listAuctions();
+                    break;
+                case "2":
+                    placeBid();
+                    break;
+                case "3":
+                    checkWinner();
+                    break;
+                case "4":
+                    loggedInUser = null;
+                    break;
+                default:
+                    System.out.println("Nieprawidłowy wybór.");
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("Błąd: Wprowadzono nieprawidłowe dane liczbowe.");
+        } catch (Exception e) {
+            System.out.println("Błąd: " + e.getMessage());
+        }
+    }
+
+    private static void showAdminMenu() {
+        System.out.println("\nMENU ADMINISTRATORA (" + loggedInUser + ")");
+        System.out.println("1. Przeglądaj aukcje");
+        System.out.println("2. Dodaj aukcję");
+        System.out.println("3. Sprawdź zwycięzcę");
+        System.out.println("4. Wyloguj");
+        System.out.print("Wybór: ");
+
+        String choice = scanner.nextLine();
+        try {
+            switch (choice) {
+                case "1":
+                    listAuctions();
+                    break;
+                case "2":
+                    addAuction();
+                    break;
+                case "3":
+                    checkWinner();
+                    break;
+                case "4":
+                    loggedInUser = null;
+                    break;
+                default:
+                    System.out.println("Nieprawidłowy wybór.");
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("Błąd: Wprowadzono nieprawidłowe dane liczbowe.");
+        } catch (Exception e) {
+            System.out.println("Błąd: " + e.getMessage());
+        }
+    }
+
+    private static void placeBid() throws Exception {
+        System.out.print("ID aukcji: ");
+        int auctionId = Integer.parseInt(scanner.nextLine());
+
+        AuctionItem item = server.getAuctionItem(auctionId);
+        if (item == null) {
+            System.out.println("Brak aukcji o podanym ID.");
             return;
         }
-        System.out.println("Lista aukcji:");
-        for (AuctionItem ai : service.listAuctionItems()) {
-            printAuction(ai);
-        }
-        // Pokazuj aukcje co sekundę 
-        while (true) {
-            System.out.print("\033[H\033[2J");
-            System.out.flush();
-            System.out.println("Aktualne aukcje:");
-            for (AuctionItem ai : service.listAuctionItems()) {
-                printAuction(ai);
-            }
-            Thread.sleep(1000);
+
+        System.out.println("Aktualna cena: " + item.getCurrentPrice());
+        System.out.print("Kwota licytacji: ");
+        double amount = Double.parseDouble(scanner.nextLine());
+
+        if (server.placeBid(auctionId, loggedInUser, amount)) {
+            System.out.println("Złożono ofertę.");
+        } else {
+            System.out.println("Odrzucono ofertę (zbyt niska kwota lub aukcja zakończona).");
         }
     }
 
-    private static void printAuction(AuctionItem ai) {
-        System.out.println(ai.getId() + ": " + ai.getTitle());
-        System.out.println("Opis: " + ai.getDescription());
-        System.out.println("Cena: " + ai.getCurrentPrice() + " zl");
-        System.out.println("Aktywna: " + ai.isActive());
-        System.out.println("Licytujacy: " + formatBidders(ai));
-        System.out.println();
+    private static void checkWinner() throws Exception {
+        System.out.print("ID aukcji: ");
+        int auctionId = Integer.parseInt(scanner.nextLine());
+
+        String winner = server.getWinner(auctionId);
+        if (winner != null) {
+            System.out.println("Zwycięzca: " + winner);
+        } else {
+            System.out.println("Aukcja trwa lub brak danych.");
+        }
     }
 
-    private static String formatBidders(AuctionItem ai) {
-        if (ai.getBidders() == null || ai.getBidders().isEmpty()) {
-            return "brak";
+    private static void addAuction() throws Exception {
+        System.out.print("Tytuł: ");
+        String title = scanner.nextLine();
+        System.out.print("Opis: ");
+        String description = scanner.nextLine();
+        System.out.print("Cena początkowa: ");
+        double startingPrice = Double.parseDouble(scanner.nextLine());
+        System.out.print("Czas trwania (minuty): ");
+        int durationMinutes = Integer.parseInt(scanner.nextLine());
+
+        AuctionItem newItem = new AuctionItem(0, title, description, startingPrice, durationMinutes);
+
+        if (server.addAuctionItem(loggedInUser, newItem) != null) {
+            System.out.println("Aukcja została dodana.");
+        } else {
+            System.out.println("Błąd podczas dodawania aukcji.");
         }
-        StringBuilder sb = new StringBuilder();
-        for (java.util.Map.Entry<String, Double> entry : ai.getBidders().entrySet()) {
-            if (sb.length() > 0) {
-                sb.append(", ");
-            }
-            sb.append(entry.getKey()).append("=").append(entry.getValue());
+    }
+
+    private static void listAuctions() throws Exception {
+        List<AuctionItem> auctions = server.listAuctionItems();
+        if (auctions.isEmpty()) {
+            System.out.println("Brak aukcji w systemie.");
+            return;
         }
-        return sb.toString();
+
+        System.out.println("\nLISTA AUKCJI:");
+        for (AuctionItem item : auctions) {
+            String status = item.isActive() ? "Aktywna (do " + item.getEndTime() + ")" : "Zakończona";
+            String highest = item.getHighestBidder().equals("none") ? "Brak" : item.getHighestBidder();
+
+            System.out.printf("[%d] %s - %s | Cena: %.2f | Najwyższa oferta: %s | Status: %s\n",
+                    item.getId(), item.getTitle(), item.getDescription(), item.getCurrentPrice(), highest, status);
+        }
     }
 }
