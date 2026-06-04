@@ -6,6 +6,7 @@ import org.example.auction.common.User;
 
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -13,6 +14,7 @@ import java.util.Scanner;
 public class AuctionClient {
     private static AuctionRemoteInterface server;
     private static final Scanner scanner = new Scanner(System.in);
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
 
     private static String loggedInUser = null;
     private static boolean isAdmin = false;
@@ -101,7 +103,7 @@ public class AuctionClient {
     private static void showUserMenu() {
         System.out.println("\nMENU UŻYTKOWNIKA (" + loggedInUser + ")");
         System.out.println("1. Przeglądaj aukcje");
-        System.out.println("2. Szczegóły aukcji");
+        System.out.println("2. Szczegóły aukcji (lista licytujących)");
         System.out.println("3. Licytuj");
         System.out.println("4. Moje licytacje");
         System.out.println("5. Wyloguj");
@@ -138,7 +140,7 @@ public class AuctionClient {
     private static void showAdminMenu() {
         System.out.println("\nMENU ADMINISTRATORA (" + loggedInUser + ")");
         System.out.println("1. Przeglądaj aukcje");
-        System.out.println("2. Szczegóły aukcji");
+        System.out.println("2. Szczegóły aukcji (lista licytujących)");
         System.out.println("3. Dodaj aukcję");
         System.out.println("4. Moje licytacje");
         System.out.println("5. Wyloguj");
@@ -181,7 +183,7 @@ public class AuctionClient {
 
         System.out.println("\nLISTA AUKCJI:");
         for (AuctionItem item : auctions) {
-            String status = item.isActive() ? "Aktywna (do " + item.getEndTime() + ")" : "Zakończona";
+            String status = item.isActive() ? "Aktywna (do " + item.getEndTime().format(DATE_FORMATTER) + ")" : "Zakończona";
             String highest = item.getHighestBidder().equals("none") ? "Brak" : item.getHighestBidder();
 
             System.out.printf("[%d] %s - %s | Cena: %.2f | Najwyższa oferta: %s | Status: %s\n",
@@ -208,7 +210,7 @@ public class AuctionClient {
         String currentWinner = hasBids ? item.getHighestBidder() : "Brak";
 
         if (item.isActive()) {
-            System.out.println("Status: Aktywna (do " + item.getEndTime() + ")");
+            System.out.println("Status: Aktywna (do " + item.getEndTime().format(DATE_FORMATTER) + ")");
             System.out.println("Aktualna cena: " + item.getCurrentPrice());
             System.out.println("Aktualnie wygrywa: " + currentWinner);
         } else {
@@ -243,7 +245,7 @@ public class AuctionClient {
                 System.out.printf("[%d] %s\n", item.getId(), item.getTitle());
 
                 if (item.isActive()) {
-                    System.out.println("   Status: Aktywna (do " + item.getEndTime() + ")");
+                    System.out.println("   Status: Aktywna (do " + item.getEndTime().format(DATE_FORMATTER) + ")");
                     if (amIWinning) {
                         System.out.printf("   Sytuacja: Prowadzisz z kwotą %.2f\n", myBid);
                     } else {
