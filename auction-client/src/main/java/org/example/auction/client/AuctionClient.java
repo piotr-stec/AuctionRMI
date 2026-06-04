@@ -7,6 +7,7 @@ import org.example.auction.common.User;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 public class AuctionClient {
@@ -100,9 +101,10 @@ public class AuctionClient {
     private static void showUserMenu() {
         System.out.println("\nMENU UŻYTKOWNIKA (" + loggedInUser + ")");
         System.out.println("1. Przeglądaj aukcje");
-        System.out.println("2. Licytuj");
-        System.out.println("3. Sprawdź zwycięzcę");
-        System.out.println("4. Wyloguj");
+        System.out.println("2. Szczegóły aukcji");
+        System.out.println("3. Licytuj");
+        System.out.println("4. Moje licytacje");
+        System.out.println("5. Wyloguj");
         System.out.print("Wybór: ");
 
         String choice = scanner.nextLine();
@@ -112,12 +114,15 @@ public class AuctionClient {
                     listAuctions();
                     break;
                 case "2":
-                    placeBid();
+                    showAuctionDetails();
                     break;
                 case "3":
-                    checkWinner();
+                    placeBid();
                     break;
                 case "4":
+                    myBids();
+                    break;
+                case "5":
                     loggedInUser = null;
                     break;
                 default:
@@ -133,9 +138,10 @@ public class AuctionClient {
     private static void showAdminMenu() {
         System.out.println("\nMENU ADMINISTRATORA (" + loggedInUser + ")");
         System.out.println("1. Przeglądaj aukcje");
-        System.out.println("2. Dodaj aukcję");
-        System.out.println("3. Sprawdź zwycięzcę");
-        System.out.println("4. Wyloguj");
+        System.out.println("2. Szczegóły aukcji");
+        System.out.println("3. Dodaj aukcję");
+        System.out.println("4. Moje licytacje");
+        System.out.println("5. Wyloguj");
         System.out.print("Wybór: ");
 
         String choice = scanner.nextLine();
@@ -145,12 +151,15 @@ public class AuctionClient {
                     listAuctions();
                     break;
                 case "2":
-                    addAuction();
+                    showAuctionDetails();
                     break;
                 case "3":
-                    checkWinner();
+                    addAuction();
                     break;
                 case "4":
+                    myBids();
+                    break;
+                case "5":
                     loggedInUser = null;
                     break;
                 default:
@@ -160,6 +169,99 @@ public class AuctionClient {
             System.out.println("Błąd: Wprowadzono nieprawidłowe dane liczbowe.");
         } catch (Exception e) {
             System.out.println("Błąd: " + e.getMessage());
+        }
+    }
+
+    private static void listAuctions() throws Exception {
+        List<AuctionItem> auctions = server.listAuctionItems();
+        if (auctions.isEmpty()) {
+            System.out.println("Brak aukcji w systemie.");
+            return;
+        }
+
+        System.out.println("\nLISTA AUKCJI:");
+        for (AuctionItem item : auctions) {
+            String status = item.isActive() ? "Aktywna (do " + item.getEndTime() + ")" : "Zakończona";
+            String highest = item.getHighestBidder().equals("none") ? "Brak" : item.getHighestBidder();
+
+            System.out.printf("[%d] %s - %s | Cena: %.2f | Najwyższa oferta: %s | Status: %s\n",
+                    item.getId(), item.getTitle(), item.getDescription(), item.getCurrentPrice(), highest, status);
+        }
+    }
+
+    private static void showAuctionDetails() throws Exception {
+        System.out.print("ID aukcji: ");
+        int auctionId = Integer.parseInt(scanner.nextLine());
+
+        AuctionItem item = server.getAuctionItem(auctionId);
+        if (item == null) {
+            System.out.println("Brak aukcji o podanym ID.");
+            return;
+        }
+
+        System.out.println("\nSZCZEGÓŁY AUKCJI [" + item.getId() + "]");
+        System.out.println("Tytuł: " + item.getTitle());
+        System.out.println("Opis: " + item.getDescription());
+
+        Map<String, Double> bidders = item.getBidders();
+        boolean hasBids = (bidders != null && !bidders.isEmpty());
+        String currentWinner = hasBids ? item.getHighestBidder() : "Brak";
+
+        if (item.isActive()) {
+            System.out.println("Status: Aktywna (do " + item.getEndTime() + ")");
+            System.out.println("Aktualna cena: " + item.getCurrentPrice());
+            System.out.println("Aktualnie wygrywa: " + currentWinner);
+        } else {
+            System.out.println("Status: Zakończona");
+            System.out.println("Cena ostateczna: " + item.getCurrentPrice());
+            System.out.println("Zwycięzca: " + currentWinner);
+        }
+
+        System.out.println("\nLISTA LICYTUJĄCYCH:");
+        if (!hasBids) {
+            System.out.println("Brak ofert.");
+        } else {
+            int position = 1;
+            for (Map.Entry<String, Double> entry : bidders.entrySet()) {
+                System.out.printf("%d. %s - %.2f\n", position++, entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    private static void myBids() throws Exception {
+        List<AuctionItem> auctions = server.listAuctionItems();
+        boolean foundAny = false;
+
+        System.out.println("\nMOJE LICYTACJE:");
+        for (AuctionItem item : auctions) {
+            Map<String, Double> bidders = item.getBidders();
+            if (bidders != null && bidders.containsKey(loggedInUser)) {
+                foundAny = true;
+                double myBid = bidders.get(loggedInUser);
+                boolean amIWinning = item.getHighestBidder().equals(loggedInUser);
+
+                System.out.printf("[%d] %s\n", item.getId(), item.getTitle());
+
+                if (item.isActive()) {
+                    System.out.println("   Status: Aktywna (do " + item.getEndTime() + ")");
+                    if (amIWinning) {
+                        System.out.printf("   Sytuacja: Prowadzisz z kwotą %.2f\n", myBid);
+                    } else {
+                        System.out.printf("   Sytuacja: Przebito! Twoja oferta: %.2f, Aktualna cena: %.2f\n", myBid, item.getCurrentPrice());
+                    }
+                } else {
+                    System.out.println("   Status: Zakończona");
+                    if (amIWinning) {
+                        System.out.printf("   Wynik: WYGRANA za kwotę %.2f\n", item.getCurrentPrice());
+                    } else {
+                        System.out.printf("   Wynik: PRZEGRANA. Twoja oferta: %.2f, Sprzedano za: %.2f\n", myBid, item.getCurrentPrice());
+                    }
+                }
+            }
+        }
+
+        if (!foundAny) {
+            System.out.println("Nie brałeś udziału w żadnych aukcjach.");
         }
     }
 
@@ -184,18 +286,6 @@ public class AuctionClient {
         }
     }
 
-    private static void checkWinner() throws Exception {
-        System.out.print("ID aukcji: ");
-        int auctionId = Integer.parseInt(scanner.nextLine());
-
-        String winner = server.getWinner(auctionId);
-        if (winner != null) {
-            System.out.println("Zwycięzca: " + winner);
-        } else {
-            System.out.println("Aukcja trwa lub brak danych.");
-        }
-    }
-
     private static void addAuction() throws Exception {
         System.out.print("Tytuł: ");
         String title = scanner.nextLine();
@@ -212,23 +302,6 @@ public class AuctionClient {
             System.out.println("Aukcja została dodana.");
         } else {
             System.out.println("Błąd podczas dodawania aukcji.");
-        }
-    }
-
-    private static void listAuctions() throws Exception {
-        List<AuctionItem> auctions = server.listAuctionItems();
-        if (auctions.isEmpty()) {
-            System.out.println("Brak aukcji w systemie.");
-            return;
-        }
-
-        System.out.println("\nLISTA AUKCJI:");
-        for (AuctionItem item : auctions) {
-            String status = item.isActive() ? "Aktywna (do " + item.getEndTime() + ")" : "Zakończona";
-            String highest = item.getHighestBidder().equals("none") ? "Brak" : item.getHighestBidder();
-
-            System.out.printf("[%d] %s - %s | Cena: %.2f | Najwyższa oferta: %s | Status: %s\n",
-                    item.getId(), item.getTitle(), item.getDescription(), item.getCurrentPrice(), highest, status);
         }
     }
 }
