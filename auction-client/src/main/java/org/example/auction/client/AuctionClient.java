@@ -142,8 +142,9 @@ public class AuctionClient {
         System.out.println("1. Przeglądaj aukcje");
         System.out.println("2. Szczegóły aukcji");
         System.out.println("3. Dodaj aukcję");
-        System.out.println("4. Moje licytacje");
-        System.out.println("5. Wyloguj");
+        System.out.println("4. Licytuj");
+        System.out.println("5. Moje licytacje");
+        System.out.println("6. Wyloguj");
         System.out.print("Wybór: ");
 
         String choice = scanner.nextLine();
@@ -159,9 +160,12 @@ public class AuctionClient {
                     addAuction();
                     break;
                 case "4":
-                    myBids();
+                    placeBid();
                     break;
                 case "5":
+                    myBids();
+                    break;
+                case "6":
                     loggedInUser = null;
                     break;
                 default:
